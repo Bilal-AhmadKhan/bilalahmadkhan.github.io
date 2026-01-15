@@ -142,56 +142,146 @@ const EdgeTrigger = ({ direction, target, navigate, label, icon: Icon, isHome })
   );
 };
 
-// --- COMPONENT: NAV CONTROL HUB ---
+// --- COMPONENT: NAV CONTROL HUB (Draggable) ---
 const NavigationRemote = ({ navigate }) => {
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const initialPos = useRef({ x: 0, y: 0 });
+  const hasMoved = useRef(false);
+
+  // Mouse Handlers
+  const handleMouseDown = (e) => {
+    if (e.button !== 0) return; // Only left click
+    setIsDragging(true);
+    hasMoved.current = false;
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    initialPos.current = { ...pos };
+  };
+
+  // Touch Handlers
+  const handleTouchStart = (e) => {
+    setIsDragging(true);
+    hasMoved.current = false;
+    dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    initialPos.current = { ...pos };
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
+      e.preventDefault();
+      const dx = e.clientX - dragStart.current.x;
+      const dy = e.clientY - dragStart.current.y;
+      
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        hasMoved.current = true;
+      }
+      
+      setPos({
+        x: initialPos.current.x + dx,
+        y: initialPos.current.y + dy
+      });
+    };
+
+    const handleTouchMove = (e) => {
+      if (!isDragging) return;
+      const dx = e.touches[0].clientX - dragStart.current.x;
+      const dy = e.touches[0].clientY - dragStart.current.y;
+
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        hasMoved.current = true;
+      }
+
+      setPos({
+        x: initialPos.current.x + dx,
+        y: initialPos.current.y + dy
+      });
+    };
+
+    const handleUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleUp);
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      window.addEventListener('touchend', handleUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleUp);
+    };
+  }, [isDragging]);
+
+  // Click Wrapper
+  const handleNavClick = (target) => {
+    if (!hasMoved.current) {
+      navigate(target);
+    }
+  };
+
   return (
-    <div className="relative w-40 h-40 rounded-full bg-zinc-100 shadow-xl border border-zinc-200 flex items-center justify-center group select-none">
-       {/* Decorative outer ring */}
-       <div className="absolute inset-2 rounded-full border border-zinc-300/50"></div>
-       
-       {/* Cross Lines */}
-       <div className="absolute w-full h-[1px] bg-zinc-200"></div>
-       <div className="absolute h-full w-[1px] bg-zinc-200"></div>
+    // Fixed wrapper positions the remote in the desired corner initially
+    // pointer-events-none ensures the empty space around the remote doesn't block clicks
+    <div className="fixed bottom-12 left-0 w-full flex justify-center md:justify-end md:pr-12 pointer-events-none z-50">
+      <div 
+        className="relative w-40 h-40 rounded-full bg-zinc-100 shadow-xl border border-zinc-200 flex items-center justify-center group select-none pointer-events-auto cursor-grab active:cursor-grabbing touch-none backdrop-blur-sm bg-opacity-90"
+        style={{ transform: `translate(${pos.x}px, ${pos.y}px)` }}
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+      >
+        {/* Decorative outer ring */}
+        <div className="absolute inset-2 rounded-full border border-zinc-300/50"></div>
+        
+        {/* Cross Lines */}
+        <div className="absolute w-full h-[1px] bg-zinc-200"></div>
+        <div className="absolute h-full w-[1px] bg-zinc-200"></div>
 
-       {/* Label */}
-       <div className="absolute -top-6 text-[10px] font-mono text-zinc-400 tracking-widest uppercase">Nav Control</div>
+        {/* Label */}
+        <div className="absolute -top-6 text-[10px] font-mono text-zinc-400 tracking-widest uppercase bg-white/50 px-2 rounded">Nav Control</div>
 
-       {/* Buttons */}
-       <button 
-         onClick={() => navigate('about')} 
-         className="absolute top-2 w-10 h-10 bg-white rounded-full shadow-sm border border-zinc-200 flex items-center justify-center hover:bg-zinc-900 hover:text-white transition-all hover:scale-110 hover:shadow-md z-10 active:scale-95"
-         title="About Me (Up)"
-       >
-         <ChevronUp size={20} />
-       </button>
-       <button 
-         onClick={() => navigate('contact')} 
-         className="absolute bottom-2 w-10 h-10 bg-white rounded-full shadow-sm border border-zinc-200 flex items-center justify-center hover:bg-zinc-900 hover:text-white transition-all hover:scale-110 hover:shadow-md z-10 active:scale-95"
-         title="Contact (Down)"
-       >
-         <ChevronDown size={20} />
-       </button>
-       <button 
-         onClick={() => navigate('cert')} 
-         className="absolute left-2 w-10 h-10 bg-white rounded-full shadow-sm border border-zinc-200 flex items-center justify-center hover:bg-zinc-900 hover:text-white transition-all hover:scale-110 hover:shadow-md z-10 active:scale-95"
-         title="Education (Left)"
-       >
-         <ChevronLeft size={20} />
-       </button>
-       <button 
-         onClick={() => navigate('projects')} 
-         className="absolute right-2 w-10 h-10 bg-white rounded-full shadow-sm border border-zinc-200 flex items-center justify-center hover:bg-zinc-900 hover:text-white transition-all hover:scale-110 hover:shadow-md z-10 active:scale-95"
-         title="Projects (Right)"
-       >
-         <ChevronRight size={20} />
-       </button>
+        {/* Buttons - Using onMouseUp to avoid conflict with dragging logic handled by handleNavClick is safer, but onClick works with the hasMoved check */}
+        <button 
+          onClick={() => handleNavClick('about')}
+          className="absolute top-2 w-10 h-10 bg-white rounded-full shadow-sm border border-zinc-200 flex items-center justify-center hover:bg-zinc-900 hover:text-white transition-all hover:scale-110 hover:shadow-md z-10 active:scale-95"
+          title="About Me (Up)"
+        >
+          <ChevronUp size={20} />
+        </button>
+        <button 
+          onClick={() => handleNavClick('contact')}
+          className="absolute bottom-2 w-10 h-10 bg-white rounded-full shadow-sm border border-zinc-200 flex items-center justify-center hover:bg-zinc-900 hover:text-white transition-all hover:scale-110 hover:shadow-md z-10 active:scale-95"
+          title="Contact (Down)"
+        >
+          <ChevronDown size={20} />
+        </button>
+        <button 
+          onClick={() => handleNavClick('cert')}
+          className="absolute left-2 w-10 h-10 bg-white rounded-full shadow-sm border border-zinc-200 flex items-center justify-center hover:bg-zinc-900 hover:text-white transition-all hover:scale-110 hover:shadow-md z-10 active:scale-95"
+          title="Education (Left)"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <button 
+          onClick={() => handleNavClick('projects')}
+          className="absolute right-2 w-10 h-10 bg-white rounded-full shadow-sm border border-zinc-200 flex items-center justify-center hover:bg-zinc-900 hover:text-white transition-all hover:scale-110 hover:shadow-md z-10 active:scale-95"
+          title="Projects (Right)"
+        >
+          <ChevronRight size={20} />
+        </button>
 
-       {/* Center Hub */}
-       <div className="relative z-20 w-12 h-12 rounded-full bg-zinc-200 flex items-center justify-center shadow-inner">
-          <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse"></div>
-       </div>
+        {/* Center Hub */}
+        <div className="relative z-20 w-12 h-12 rounded-full bg-zinc-200 flex items-center justify-center shadow-inner">
+            <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse"></div>
+        </div>
+      </div>
     </div>
-  )
+  );
 }
 
 export default function Portfolio() {
@@ -331,10 +421,8 @@ export default function Portfolio() {
               </a>
             </div>
 
-            {/* Remote Control Container */}
-            <div className="w-full flex justify-center md:justify-end mt-12 md:mt-16 md:pr-12 pt-6 md:pt-6">
-               <NavigationRemote navigate={navigate} />
-            </div>
+            {/* Remote Control (Self-contained Fixed Position) */}
+            <NavigationRemote navigate={navigate} />
 
           </div>
         </section>
@@ -365,7 +453,7 @@ export default function Portfolio() {
                     {/* Right Column: Skills Grid */}
                     <div className="md:col-span-7 bg-zinc-50 p-8 border border-zinc-100">
                          <div className="flex items-center justify-between mb-6 border-b border-zinc-200 pb-4">
-                            <h3 className="font-bold text-zinc-900 flex items-center gap-2"><Terminal size={18}/> Technical Arsenal</h3>
+                            <h3 className="font-bold text-zinc-900 flex items-center gap-2"><Terminal size={18}/> Technical Skills</h3>
                             <span className="text-xs font-mono text-zinc-400">STACK_V1.0</span>
                          </div>
                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
